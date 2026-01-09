@@ -6,15 +6,44 @@ const Todolist = () => {
 	const [user, setUser] = useState(null)
 	const [input, setInput] = useState("")
 
+	// Check if user exists, if not create it
+	async function checkUser() {
+		try {
+			let response = await fetch("https://playground.4geeks.com/todo/users/javi")
+
+			if (response.ok) {
+				// User exists, get their data
+				let data = await response.json()
+				setUser(data)
+			} else if (response.status === 404) {
+				// User doesn't exist, create it
+				let createResponse = await fetch("https://playground.4geeks.com/todo/users/javi", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" }
+				})
+				// Get the newly created user data
+				if (createResponse.ok) {
+					let newUserData = await createResponse.json()
+					setUser(newUserData)
+				}
+			}
+		}
+		catch (error) {
+			console.log("Error in checkUser:", error);
+		}
+	}
+
 	// Fetch initial data from API
 	async function getData() {
 		try {
 			let response = await fetch("https://playground.4geeks.com/todo/users/javi")
-			let data = await response.json()
-			setUser(data)
+			if (response.ok) {
+				let data = await response.json()
+				setUser(data)
+			}
 		}
-		catch {
-			console.log(error);
+		catch (error) {
+			console.log("Error in getData:", error);
 		}
 	}
 
@@ -22,21 +51,31 @@ const Todolist = () => {
 	async function postTask(event) {
 		event.preventDefault();
 
+		if (!input.trim()) return; // Don't add empty tasks
+
 		const newTast = {
 			"label": input,
-			"done": false
+			"is_done": false
 		}
 
-		await fetch("https://playground.4geeks.com/todo/todos/javi", {
-			method: "POST",
-			body: JSON.stringify(newTast),
-			headers: { "Content-Type": "application/json" }
-		})
+		try {
+			let response = await fetch("https://playground.4geeks.com/todo/todos/javi", {
+				method: "POST",
+				body: JSON.stringify(newTast),
+				headers: { "Content-Type": "application/json" }
+			})
 
-		getData();
-
-		// Clear input field
-		setInput("")
+			if (response.ok) {
+				// Clear input field
+				setInput("")
+				// Refresh tasks
+				await getData()
+			} else {
+				console.log("Error creating task:", response.status)
+			}
+		} catch (error) {
+			console.log("Error in postTask:", error)
+		}
 	}
 
 	// Delete task from API
@@ -64,7 +103,7 @@ const Todolist = () => {
 
 	// Load data on component mount
 	useEffect(() => {
-		getData()
+		checkUser()
 	}, [])
 
 	return (
